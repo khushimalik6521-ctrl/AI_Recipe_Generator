@@ -350,13 +350,22 @@ st.divider()
 
 
 # ---------------- HOME PAGE ----------------
+# ---------------- HOME PAGE ----------------
 if st.session_state.page == "Home":
+
+    st.markdown(
+        '<p class="section-label">YOUR PERSONAL COOKING SPACE</p>',
+        unsafe_allow_html=True
+    )
 
     st.markdown("## Discover the joy of cooking ✨")
 
     st.write(
-        "Find delicious recipes using ingredients available in your kitchen."
+        "Turn everyday ingredients into something delicious. "
+        "Explore, prepare and save your favourite recipes."
     )
+
+    st.write("")
 
     c1, c2, c3 = st.columns(3)
 
@@ -365,16 +374,16 @@ if st.session_state.page == "Home":
         <div class="info-card">
             <h2>🥕</h2>
             <h3>Smart Ingredients</h3>
-            <p>Enter your available ingredients and discover suitable recipes.</p>
+            <p>Find creative recipes using ingredients already available in your kitchen.</p>
         </div>
         """, unsafe_allow_html=True)
 
     with c2:
         st.markdown("""
         <div class="info-card">
-            <h2>🍳</h2>
+            <h2>👩‍🍳</h2>
             <h3>Easy Cooking</h3>
-            <p>Follow simple step-by-step cooking instructions.</p>
+            <p>Follow simple and clear step-by-step cooking instructions.</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -383,32 +392,15 @@ if st.session_state.page == "Home":
         <div class="info-card">
             <h2>❤️</h2>
             <h3>Save Favourites</h3>
-            <p>Build your own collection of favourite recipes.</p>
+            <p>Keep your favourite recipes in one convenient collection.</p>
         </div>
         """, unsafe_allow_html=True)
 
     st.write("")
+    st.markdown("### Ready to create something delicious?")
+    st.write("Let's discover what you can cook with your ingredients!")
 
-    st.markdown("### 🌟 Featured Recipes")
-
-    featured = st.columns(3)
-
-    for col, recipe in zip(featured, RECIPES):
-
-        with col:
-
-            st.markdown(f"""
-            <div class="info-card">
-                <h2>{recipe['emoji']}</h2>
-                <h3>{recipe['name']}</h3>
-                <p>{recipe['description']}</p>
-                <p>⏱️ {recipe['time']} minutes</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-    st.write("")
-
-    if st.button("Start Creating Recipes →"):
+    if st.button("✨ Start Creating Recipes →"):
         go_to("Create")
 
 
