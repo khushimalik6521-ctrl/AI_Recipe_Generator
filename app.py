@@ -1,5 +1,5 @@
 import streamlit as st
-from google import genai
+import html
 
 # ---------------- PAGE CONFIG ----------------
 st.set_page_config(
@@ -19,7 +19,7 @@ html, body, [class*="css"] {
 }
 
 .stApp {
-    background: linear-gradient(135deg, #fffaf2, #fff1df);
+    background: linear-gradient(135deg, #fffaf2, #fff0df);
 }
 
 .block-container {
@@ -32,11 +32,12 @@ h1, h2, h3 {
 }
 
 .hero {
-    background: linear-gradient(120deg, #ff9d52, #f56b35);
+    background: linear-gradient(120deg, #ff9d52, #ed6535);
     padding: 35px;
     border-radius: 24px;
     color: white;
     margin-bottom: 25px;
+    box-shadow: 0 8px 25px rgba(210, 100, 40, 0.15);
 }
 
 .hero h1 {
@@ -56,6 +57,15 @@ h1, h2, h3 {
     border-radius: 18px;
     border: 1px solid #f4ddc8;
     margin-bottom: 16px;
+    box-shadow: 0 4px 15px rgba(100, 60, 30, 0.04);
+}
+
+.recipe-card {
+    background: white;
+    padding: 25px;
+    border-radius: 20px;
+    border: 1px solid #f2d8c0;
+    margin: 15px 0;
 }
 
 .stButton > button {
@@ -82,8 +92,118 @@ div[data-testid="stTextArea"] textarea {
     color: #916d55;
     font-size: 13px;
 }
+
+div[data-testid="stMetric"] {
+    background: white;
+    padding: 15px;
+    border-radius: 15px;
+    border: 1px solid #f4ddc8;
+}
+
 </style>
 """, unsafe_allow_html=True)
+
+
+# ---------------- RECIPE DATABASE ----------------
+# Temporary predefined recipes for showcase
+
+RECIPES = [
+    {
+        "name": "Paneer Butter Masala",
+        "emoji": "🍛",
+        "cuisine": "Indian",
+        "preference": "Vegetarian",
+        "difficulty": "Medium",
+        "time": 35,
+        "match": ["paneer", "tomato", "onion", "butter"],
+        "description": "A rich and creamy North Indian curry with soft paneer cubes.",
+        "ingredients": [
+            "200g paneer",
+            "2 tomatoes",
+            "1 onion",
+            "1 tbsp butter",
+            "2 tbsp cream",
+            "1 tsp ginger-garlic paste",
+            "1/2 tsp red chilli powder",
+            "1/2 tsp garam masala",
+            "Salt as required"
+        ],
+        "steps": [
+            "Heat butter in a pan and add chopped onions.",
+            "Add ginger-garlic paste and cook until fragrant.",
+            "Add chopped tomatoes and cook until soft.",
+            "Add spices and blend the mixture into a smooth gravy.",
+            "Add paneer cubes and cook for 5 minutes.",
+            "Add cream and garam masala. Mix gently.",
+            "Serve hot with naan, roti or rice."
+        ],
+        "tips": "Add a little kasuri methi for a restaurant-style flavour."
+    },
+
+    {
+        "name": "Crispy Aloo Tikki",
+        "emoji": "🥔",
+        "cuisine": "Indian",
+        "preference": "Vegetarian",
+        "difficulty": "Easy",
+        "time": 30,
+        "match": ["potato", "aloo", "onion", "peas"],
+        "description": "Golden and crispy potato patties with a delicious spicy filling.",
+        "ingredients": [
+            "3 medium boiled potatoes",
+            "1/2 cup boiled peas",
+            "1 chopped onion",
+            "2 tbsp breadcrumbs",
+            "1/2 tsp red chilli powder",
+            "1/2 tsp garam masala",
+            "1/2 tsp chaat masala",
+            "Salt as required",
+            "Oil for shallow frying"
+        ],
+        "steps": [
+            "Mash the boiled potatoes in a bowl.",
+            "Add peas, chopped onion and all the spices.",
+            "Mix everything well and add breadcrumbs.",
+            "Shape the mixture into small round patties.",
+            "Heat a little oil in a pan.",
+            "Shallow fry the patties until golden and crispy on both sides.",
+            "Serve hot with mint chutney or tomato ketchup."
+        ],
+        "tips": "Refrigerate the patties briefly before frying to help them hold their shape."
+    },
+
+    {
+        "name": "Vegetable Fried Rice",
+        "emoji": "🍚",
+        "cuisine": "Chinese",
+        "preference": "Vegan",
+        "difficulty": "Easy",
+        "time": 20,
+        "match": ["rice", "carrot", "capsicum", "onion", "peas"],
+        "description": "A quick and flavourful rice dish loaded with fresh vegetables.",
+        "ingredients": [
+            "2 cups cooked rice",
+            "1/2 cup chopped carrots",
+            "1/2 cup chopped capsicum",
+            "1/4 cup peas",
+            "1 chopped onion",
+            "1 tbsp soy sauce",
+            "1 tsp black pepper",
+            "1 tbsp oil",
+            "Salt as required"
+        ],
+        "steps": [
+            "Heat oil in a large pan or wok.",
+            "Add chopped onion and saute for a minute.",
+            "Add carrots, capsicum and peas.",
+            "Stir fry the vegetables for 3-4 minutes.",
+            "Add cooked rice and mix gently.",
+            "Add soy sauce, black pepper and salt.",
+            "Toss everything together and serve hot."
+        ],
+        "tips": "Use cooled, previously cooked rice for the best texture."
+    }
+]
 
 
 # ---------------- SESSION STATE ----------------
@@ -91,8 +211,9 @@ defaults = {
     "logged_in": False,
     "username": "",
     "page": "Home",
-    "recipe": "",
-    "saved_recipes": []
+    "recipe": None,
+    "saved_recipes": [],
+    "matched_recipes": []
 }
 
 for key, value in defaults.items():
@@ -104,6 +225,38 @@ for key, value in defaults.items():
 def go_to(page):
     st.session_state.page = page
     st.rerun()
+
+
+# ---------------- RECIPE DISPLAY ----------------
+def display_recipe(recipe):
+
+    st.markdown(f"## {recipe['emoji']} {recipe['name']}")
+    st.write(recipe["description"])
+
+    c1, c2, c3 = st.columns(3)
+
+    c1.metric("⏱️ Cooking Time", f"{recipe['time']} min")
+    c2.metric("👩‍🍳 Difficulty", recipe["difficulty"])
+    c3.metric("🍽️ Servings", f"{recipe['servings']}")
+
+    st.divider()
+
+    left, right = st.columns([1, 1.3])
+
+    with left:
+        st.markdown("### 🥕 Ingredients")
+
+        for item in recipe["ingredients"]:
+            st.markdown(f"- {item}")
+
+    with right:
+        st.markdown("### 👩‍🍳 Preparation Steps")
+
+        for i, step in enumerate(recipe["steps"], 1):
+            st.markdown(f"**Step {i}:** {step}")
+            st.write("")
+
+    st.info(f"💡 Chef's Tip: {recipe['tips']}")
 
 
 # ---------------- LOGIN SCREEN ----------------
@@ -119,38 +272,49 @@ if not st.session_state.logged_in:
     left, middle, right = st.columns([1, 1.3, 1])
 
     with middle:
+
         st.markdown("## Let's get cooking!")
         st.write("Sign in to explore delicious possibilities.")
 
         with st.form("login_form"):
-            username = st.text_input("Your Name", placeholder="Enter your name")
-            password = st.text_input(
-                "Demo Password",
-                type="password",
-                placeholder="Enter any password"
+
+            username = st.text_input(
+                "Your Name",
+                placeholder="Enter your name"
             )
+
+            password = st.text_input(
+                "Password",
+                type="password",
+                placeholder="Enter your password"
+            )
+
             submitted = st.form_submit_button("Login →")
 
             if submitted:
+
                 if username.strip() and password.strip():
+
                     st.session_state.username = username.strip()
                     st.session_state.logged_in = True
                     st.session_state.page = "Home"
+
                     st.rerun()
+
                 else:
                     st.warning("Please enter your name and password.")
-
-        st.caption("Demo login: Enter any name and any password.")
 
     st.stop()
 
 
 # ---------------- TOP HEADER ----------------
+safe_username = html.escape(st.session_state.username)
+
 st.markdown(f"""
 <div class="hero">
     <h1>🍊 Recipe Studio</h1>
     <p>Good food starts with what you already have.</p>
-    <p>Welcome, {st.session_state.username}!</p>
+    <p>Welcome, {safe_username}! ✨</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -177,6 +341,7 @@ with nav4:
 with nav5:
     if st.button("Logout"):
         st.session_state.logged_in = False
+        st.session_state.recipe = None
         st.session_state.page = "Home"
         st.rerun()
 
@@ -188,7 +353,10 @@ st.divider()
 if st.session_state.page == "Home":
 
     st.markdown("## Discover the joy of cooking ✨")
-    st.write("Your personal AI cooking assistant is ready to help.")
+
+    st.write(
+        "Find delicious recipes using ingredients available in your kitchen."
+    )
 
     c1, c2, c3 = st.columns(3)
 
@@ -196,17 +364,17 @@ if st.session_state.page == "Home":
         st.markdown("""
         <div class="info-card">
             <h2>🥕</h2>
-            <h3>Use Your Ingredients</h3>
-            <p>Find creative recipes using ingredients already in your kitchen.</p>
+            <h3>Smart Ingredients</h3>
+            <p>Enter your available ingredients and discover suitable recipes.</p>
         </div>
         """, unsafe_allow_html=True)
 
     with c2:
         st.markdown("""
         <div class="info-card">
-            <h2>🤖</h2>
-            <h3>AI Powered</h3>
-            <p>Get personalised recipe suggestions with the help of Gemini AI.</p>
+            <h2>🍳</h2>
+            <h3>Easy Cooking</h3>
+            <p>Follow simple step-by-step cooking instructions.</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -214,13 +382,31 @@ if st.session_state.page == "Home":
         st.markdown("""
         <div class="info-card">
             <h2>❤️</h2>
-            <h3>Save Your Favourites</h3>
-            <p>Keep your favourite recipes in one convenient place.</p>
+            <h3>Save Favourites</h3>
+            <p>Build your own collection of favourite recipes.</p>
         </div>
         """, unsafe_allow_html=True)
 
     st.write("")
-    st.markdown("### Ready to create something delicious?")
+
+    st.markdown("### 🌟 Featured Recipes")
+
+    featured = st.columns(3)
+
+    for col, recipe in zip(featured, RECIPES):
+
+        with col:
+
+            st.markdown(f"""
+            <div class="info-card">
+                <h2>{recipe['emoji']}</h2>
+                <h3>{recipe['name']}</h3>
+                <p>{recipe['description']}</p>
+                <p>⏱️ {recipe['time']} minutes</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.write("")
 
     if st.button("Start Creating Recipes →"):
         go_to("Create")
@@ -230,7 +416,11 @@ if st.session_state.page == "Home":
 elif st.session_state.page == "Create":
 
     st.markdown("## 🥕 Create Your Own Recipe")
-    st.write("Tell us what you have in your kitchen.")
+
+    st.write(
+        "Tell us what you have in your kitchen. "
+        "We'll find a suitable recipe for you!"
+    )
 
     with st.form("recipe_form"):
 
@@ -243,9 +433,10 @@ elif st.session_state.page == "Create":
         c1, c2 = st.columns(2)
 
         with c1:
+
             cuisine = st.selectbox(
                 "Select Cuisine",
-                ["Indian", "Italian", "Chinese", "Mexican", "Continental", "Any"]
+                ["Any", "Indian", "Chinese"]
             )
 
             preference = st.selectbox(
@@ -259,9 +450,10 @@ elif st.session_state.page == "Create":
             )
 
         with c2:
+
             difficulty = st.selectbox(
                 "Cooking Difficulty",
-                ["Easy", "Medium", "Hard"]
+                ["Any", "Easy", "Medium", "Hard"]
             )
 
             servings = st.number_input(
@@ -274,94 +466,140 @@ elif st.session_state.page == "Create":
         generate = st.form_submit_button("✨ Generate My Recipe")
 
     if generate:
+
         if not ingredients.strip():
+
             st.warning("Please enter some ingredients first.")
 
-        else:
-            api_key = st.secrets.get("GEMINI_API_KEY")
+        elif preference in ["Eggetarian", "Non-Vegetarian"]:
 
-            if not api_key:
-                st.error("API key not configured. Please check Streamlit Secrets.")
+            st.warning(
+                "Currently, our recipe collection contains vegetarian "
+                "and vegan recipes. Please select one of these preferences."
+            )
+
+        else:
+
+            entered = [
+                item.strip().lower()
+                for item in ingredients.replace("\n", ",").split(",")
+                if item.strip()
+            ]
+
+            max_time = int(cooking_time.split()[0])
+
+            matching = []
+
+            for recipe in RECIPES:
+
+                # Cuisine filter
+                if cuisine != "Any" and recipe["cuisine"] != cuisine:
+                    continue
+
+                # Food preference filter
+                if preference == "Vegan" and recipe["preference"] != "Vegan":
+                    continue
+
+                # Cooking time filter
+                if recipe["time"] > max_time:
+                    continue
+
+                # Difficulty filter
+                if difficulty != "Any" and recipe["difficulty"] != difficulty:
+                    continue
+
+                # Ingredient matching
+                score = 0
+
+                for user_item in entered:
+
+                    for recipe_item in recipe["match"]:
+
+                        if user_item in recipe_item or recipe_item in user_item:
+                            score += 1
+                            break
+
+                if score > 0:
+
+                    recipe_copy = recipe.copy()
+                    recipe_copy["servings"] = servings
+
+                    matching.append((score, recipe_copy))
+
+            if matching:
+
+                # Highest ingredient match first
+                matching.sort(key=lambda x: x[0], reverse=True)
+
+                st.session_state.matched_recipes = [
+                    item[1] for item in matching
+                ]
+
+                st.session_state.recipe = matching[0][1]
+                st.session_state.page = "Generated"
+
+                st.rerun()
 
             else:
-                prompt = f"""
-                You are a professional chef and recipe assistant.
 
-                Create ONE practical and delicious recipe using these details:
-
-                Available ingredients: {ingredients}
-                Cuisine: {cuisine}
-                Food preference: {preference}
-                Cooking time: {cooking_time}
-                Difficulty: {difficulty}
-                Servings: {servings}
-
-                Follow this format:
-
-                Recipe Name:
-                Short Description:
-                Preparation Time:
-                Cooking Time:
-                Ingredients:
-                Step-by-Step Instructions:
-                Chef's Tips:
-
-                Keep the instructions clear and beginner-friendly.
-                Respect the selected food preference.
-                Do not suggest ingredients that conflict with it.
-                """
-
-                try:
-                    with st.spinner("👩‍🍳 Your recipe is being prepared..."):
-
-                        client = genai.Client(api_key=api_key)
-
-                        response = client.models.generate_content(
-                            model="gemini-3.8-flash",
-                            contents=prompt,
-                            config={
-                                "temperature": 0.6,
-                                "max_output_tokens": 1100
-                            }
-                        )
-
-                        st.session_state.recipe = response.text
-                        st.session_state.page = "Generated"
-                        st.rerun()
-
-                except Exception as e:
-                    st.error("Recipe generation failed. Please check the API configuration.")
-                    st.caption(str(e))
+                st.warning(
+                    "No matching recipe found. Try adding ingredients "
+                    "like potato, paneer, rice, tomato, onion or carrot. "
+                    "You can also increase the cooking time."
+                )
 
 
 # ---------------- GENERATED RECIPE PAGE ----------------
 elif st.session_state.page == "Generated":
 
-    st.markdown("## 🍽️ Your Generated Recipe")
+    st.markdown("## 🍽️ Your Recipe Results")
 
     if st.session_state.recipe:
 
         st.markdown("""
         <div class="info-card">
-            <h2>✨ Made specially for you!</h2>
-            <p>Your personalised AI-generated recipe is ready.</p>
+            <h2>✨ Your Kitchen Inspiration!</h2>
+            <p>Here are the recipes matching your available ingredients.</p>
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown(st.session_state.recipe)
+        recipes = st.session_state.matched_recipes
+
+        if not recipes:
+            recipes = [st.session_state.recipe]
+
+        selected = st.selectbox(
+            "Choose a recipe",
+            options=range(len(recipes)),
+            format_func=lambda i: recipes[i]["name"]
+        )
+
+        current_recipe = recipes[selected]
+
+        display_recipe(current_recipe)
+
+        st.write("")
 
         if st.button("❤️ Save This Recipe"):
-            if st.session_state.recipe not in st.session_state.saved_recipes:
-                st.session_state.saved_recipes.append(
-                    st.session_state.recipe
-                )
-                st.success("Recipe saved successfully!")
+
+            existing = [
+                r["name"] for r in st.session_state.saved_recipes
+            ]
+
+            if current_recipe["name"] not in existing:
+
+                st.session_state.saved_recipes.append(current_recipe.copy())
+
+                st.success("Recipe saved successfully! ❤️")
 
             else:
-                st.info("This recipe is already saved.")
+
+                st.info("This recipe is already in your collection.")
 
     else:
+
         st.info("You haven't generated a recipe yet.")
+
         if st.button("Create Your First Recipe"):
             go_to("Create")
 
@@ -370,22 +608,37 @@ elif st.session_state.page == "Generated":
 elif st.session_state.page == "Saved":
 
     st.markdown("## ❤️ My Saved Recipes")
+
     st.write("Your personal collection of favourite dishes.")
+
+    st.metric(
+        "Total Saved Recipes",
+        len(st.session_state.saved_recipes)
+    )
 
     if st.session_state.saved_recipes:
 
         for i, recipe in enumerate(st.session_state.saved_recipes):
 
-            with st.expander(f"🍲 Saved Recipe {i + 1}"):
+            with st.expander(
+                f"{recipe['emoji']} {recipe['name']}",
+                expanded=False
+            ):
 
-                st.markdown(recipe)
+                display_recipe(recipe)
 
-                if st.button("Remove Recipe", key=f"remove_{i}"):
+                if st.button(
+                    "🗑️ Remove Recipe",
+                    key=f"remove_{i}"
+                ):
+
                     st.session_state.saved_recipes.pop(i)
-                    st.success("Recipe removed.")
+
+                    st.success("Recipe removed successfully.")
                     st.rerun()
 
     else:
+
         st.markdown("""
         <div class="info-card">
             <h2>🥗 No saved recipes yet!</h2>
@@ -399,9 +652,10 @@ elif st.session_state.page == "Saved":
 
 # ---------------- FOOTER ----------------
 st.divider()
+
 st.markdown(
     "<p class='small-note' style='text-align:center;'>"
-    "Made with ❤️ using Streamlit & Gemini AI | Recipe Studio"
+    "Made with ❤️ using Streamlit | Recipe Studio"
     "</p>",
     unsafe_allow_html=True
 )
